@@ -5,21 +5,41 @@ import type {
   MealRecord,
   ScanResponse,
   VisionAnalysis,
+  WeeklyReport,
 } from '../types'
 
-const API_BASE = '/api'
+const API_BASE = import.meta.env.VITE_API_URL || '/api'
+
+function formatApiError(detail: unknown): string {
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === 'string') return item
+        if (item && typeof item === 'object' && 'msg' in item) {
+          return String((item as { msg: string }).msg)
+        }
+        return JSON.stringify(item)
+      })
+      .join(', ')
+  }
+  if (detail && typeof detail === 'object') {
+    return JSON.stringify(detail)
+  }
+  return 'Request failed'
+}
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(err.detail || 'Request failed')
+    throw new Error(formatApiError(err.detail))
   }
   return res.json()
 }
 
 export async function scanFood(image: File): Promise<ScanResponse> {
   const form = new FormData()
-  form.append('image', image)
+  form.append('image', image, image.name || 'food.jpg')
   const res = await fetch(`${API_BASE}/scan`, { method: 'POST', body: form })
   return handleResponse<ScanResponse>(res)
 }
@@ -65,6 +85,11 @@ export async function chatWithCoach(
 export async function getDashboardStats(): Promise<DashboardStats> {
   const res = await fetch(`${API_BASE}/dashboard/stats`)
   return handleResponse<DashboardStats>(res)
+}
+
+export async function getWeeklyReport(): Promise<WeeklyReport> {
+  const res = await fetch(`${API_BASE}/reports/weekly`)
+  return handleResponse<WeeklyReport>(res)
 }
 
 export async function checkHealth(): Promise<{ openai_configured: boolean }> {

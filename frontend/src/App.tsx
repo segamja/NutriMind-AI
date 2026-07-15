@@ -6,6 +6,7 @@ import { ResultPage } from './pages/ResultPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { HistoryPage } from './pages/HistoryPage'
 import { CoachPage } from './pages/CoachPage'
+import { WeeklyReportPage } from './pages/WeeklyReportPage'
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <Route path="/camera" element={<CameraPage />} />
           <Route path="/result" element={<ResultPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/report" element={<WeeklyReportPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/coach" element={<CoachPage />} />
         </Route>

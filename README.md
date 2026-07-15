@@ -23,7 +23,23 @@
 - Health Dashboard
 - 다크모드 지원
 
-## 시작하기
+## 배포 (Vercel + Supabase)
+
+인터넷에서 실행하려면 [docs/DEPLOY.md](docs/DEPLOY.md)를 참고하세요.
+
+| 서비스 | 역할 |
+|--------|------|
+| **Vercel** | Frontend + Backend API |
+| **Supabase** | PostgreSQL Database |
+
+```bash
+# GitHub push → Vercel 자동 배포
+# 환경변수: OPENAI_API_KEY, DATABASE_URL (Supabase), CORS_ORIGINS
+```
+
+---
+
+## 시작하기 (로컬)
 
 ### 1. Backend 설정
 
@@ -38,7 +54,7 @@ pip install -r requirements.txt
 cp .env.example .env
 # .env 파일에 OPENAI_API_KEY 설정
 
-uvicorn main:app --reload --port 8000
+uvicorn main:app --reload --port 8800
 ```
 
 ### 2. Frontend 설정

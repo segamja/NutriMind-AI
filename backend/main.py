@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.db.database import init_db
-from app.routers import dashboard, meals, scan
+from app.routers import dashboard, meals, reports, scan
 
 
 @asynccontextmanager
@@ -32,6 +32,7 @@ app.add_middleware(
 app.include_router(scan.router)
 app.include_router(meals.router)
 app.include_router(dashboard.router)
+app.include_router(reports.router)
 
 
 @app.get("/api/health")
@@ -40,4 +41,5 @@ async def health():
         "status": "ok",
         "service": "NutriMind AI",
         "openai_configured": bool(settings.openai_api_key),
+        "database": "postgresql" if settings.is_production_db else "sqlite",
     }

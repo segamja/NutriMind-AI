@@ -82,3 +82,14 @@ export interface DashboardStats {
   today_protein: number
   weekly_calories: { date: string; calories: number }[]
 }
+
+export interface WeeklyReport {
+  period: string
+  total_meals: number
+  habit_analysis: string
+  nutrient_analysis: string
+  avg_health_score: number
+  improvements: string[]
+  next_week_goals: string[]
+  summary: string
+}

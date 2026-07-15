@@ -8,6 +8,7 @@ import {
   Moon,
   Sun,
   Leaf,
+  FileText,
 } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import { cn } from '../lib/utils'
@@ -16,6 +17,7 @@ const navItems = [
   { to: '/', icon: Home, label: '홈' },
   { to: '/camera', icon: Camera, label: '스캔' },
   { to: '/dashboard', icon: BarChart3, label: '대시보드' },
+  { to: '/report', icon: FileText, label: '리포트' },
   { to: '/history', icon: History, label: '기록' },
   { to: '/coach', icon: MessageCircle, label: '코치' },
 ]

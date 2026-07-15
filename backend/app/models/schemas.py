@@ -102,3 +102,14 @@ class DashboardStats(BaseModel):
     today_calories: float
     today_protein: float
     weekly_calories: list[dict[str, float | str]]
+
+
+class WeeklyReport(BaseModel):
+    period: str
+    total_meals: int
+    habit_analysis: str
+    nutrient_analysis: str
+    avg_health_score: float
+    improvements: list[str]
+    next_week_goals: list[str]
+    summary: str

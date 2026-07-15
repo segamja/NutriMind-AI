@@ -1,5 +1,6 @@
 import base64
 import json
+from typing import Any
 
 from openai import OpenAI
 
@@ -73,6 +74,36 @@ VISION_SCHEMA = {
     "additionalProperties": False,
 }
 
+COACH_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "reply": {"type": "string"},
+        "actions": {"type": "array", "items": {"type": "string"}},
+        "suggestions": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["reply", "actions", "suggestions"],
+    "additionalProperties": False,
+}
+
+WEEKLY_REPORT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "period": {"type": "string"},
+        "total_meals": {"type": "integer"},
+        "habit_analysis": {"type": "string"},
+        "nutrient_analysis": {"type": "string"},
+        "avg_health_score": {"type": "number"},
+        "improvements": {"type": "array", "items": {"type": "string"}},
+        "next_week_goals": {"type": "array", "items": {"type": "string"}},
+        "summary": {"type": "string"},
+    },
+    "required": [
+        "period", "total_meals", "habit_analysis", "nutrient_analysis",
+        "avg_health_score", "improvements", "next_week_goals", "summary",
+    ],
+    "additionalProperties": False,
+}
+
 
 def _get_client() -> OpenAI:
     if not settings.openai_api_key:
@@ -80,10 +111,45 @@ def _get_client() -> OpenAI:
     return OpenAI(api_key=settings.openai_api_key)
 
 
-def analyze_food_image(image_bytes: bytes, cnn_hint: CNNResult) -> VisionAnalysis:
+def _text_format(schema: dict, name: str) -> dict:
+    return {
+        "format": {
+            "type": "json_schema",
+            "name": name,
+            "strict": True,
+            "schema": schema,
+        }
+    }
+
+
+def _responses_json(
+    client: OpenAI,
+    *,
+    model: str,
+    input_data: Any,
+    instructions: str | None,
+    schema: dict,
+    name: str,
+) -> dict:
+    kwargs: dict = {
+        "model": model,
+        "input": input_data,
+        "text": _text_format(schema, name),
+    }
+    if instructions:
+        kwargs["instructions"] = instructions
+
+    response = client.responses.create(**kwargs)
+    return json.loads(response.output_text)
+
+
+def analyze_food_image(
+    image_bytes: bytes,
+    cnn_hint: CNNResult,
+    mime_type: str = "image/jpeg",
+) -> VisionAnalysis:
     client = _get_client()
     b64 = base64.standard_b64encode(image_bytes).decode("utf-8")
-    mime = "image/jpeg"
 
     prompt = f"""You are NutriMind AI, an expert nutrition analyst.
 Analyze this food photo and provide detailed nutrition analysis in Korean.
@@ -101,46 +167,21 @@ Provide:
 
 Be realistic with portion estimates based on visual cues."""
 
-    response = client.chat.completions.create(
-        model=settings.openai_model,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt},
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:{mime};base64,{b64}"},
-                    },
-                ],
-            }
-        ],
-        response_format={
-            "type": "json_schema",
-            "json_schema": {
-                "name": "food_analysis",
-                "strict": True,
-                "schema": VISION_SCHEMA,
-            },
-        },
-        max_tokens=2000,
+    data = _responses_json(
+        client,
+        model=settings.openai_vision_model,
+        input_data=[{
+            "role": "user",
+            "content": [
+                {"type": "input_text", "text": prompt},
+                {"type": "input_image", "image_url": f"data:{mime_type};base64,{b64}"},
+            ],
+        }],
+        instructions=None,
+        schema=VISION_SCHEMA,
+        name="food_analysis",
     )
-
-    content = response.choices[0].message.content
-    data = json.loads(content)
     return VisionAnalysis(**data)
-
-
-COACH_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "reply": {"type": "string"},
-        "actions": {"type": "array", "items": {"type": "string"}},
-        "suggestions": {"type": "array", "items": {"type": "string"}},
-    },
-    "required": ["reply", "actions", "suggestions"],
-    "additionalProperties": False,
-}
 
 
 def get_coaching_response(
@@ -161,7 +202,7 @@ def get_coaching_response(
                 f"건강점수 {meal.get('health_score', 0)}점\n"
             )
 
-    system_prompt = f"""You are NutriMind AI, a friendly Korean nutrition coach.
+    instructions = f"""You are NutriMind AI, a friendly Korean nutrition coach.
 Help users improve their eating habits with practical, actionable advice.
 Always respond in Korean. Be encouraging but honest.
 {meals_context}
@@ -171,23 +212,54 @@ Provide:
 2. 1-3 specific actions they can take today
 3. 1-2 meal or food suggestions if relevant"""
 
-    messages = [{"role": "system", "content": system_prompt}]
+    input_messages: list[dict] = []
     for msg in history[-10:]:
-        messages.append({"role": msg["role"], "content": msg["content"]})
-    messages.append({"role": "user", "content": message})
+        input_messages.append({"role": msg["role"], "content": msg["content"]})
+    input_messages.append({"role": "user", "content": message})
 
-    response = client.chat.completions.create(
+    return _responses_json(
+        client,
         model=settings.openai_model,
-        messages=messages,
-        response_format={
-            "type": "json_schema",
-            "json_schema": {
-                "name": "coach_response",
-                "strict": True,
-                "schema": COACH_SCHEMA,
-            },
-        },
-        max_tokens=1000,
+        input_data=input_messages,
+        instructions=instructions,
+        schema=COACH_SCHEMA,
+        name="coach_response",
     )
 
-    return json.loads(response.choices[0].message.content)
+
+def generate_weekly_report(meals: list[dict], period: str) -> dict:
+    client = _get_client()
+
+    meals_summary = ""
+    for meal in meals:
+        n = meal.get("nutrition", {})
+        meals_summary += (
+            f"- {meal.get('food_name')} ({meal.get('created_at', '')[:10]}): "
+            f"{n.get('calories', 0):.0f}kcal, 단백질 {n.get('protein', 0):.1f}g, "
+            f"지방 {n.get('fat', 0):.1f}g, 탄수 {n.get('carbohydrates', 0):.1f}g, "
+            f"건강점수 {meal.get('health_score', 0)}점\n"
+        )
+
+    instructions = """You are NutriMind AI, an expert nutrition analyst.
+Analyze the user's weekly meal records and generate a comprehensive health report in Korean.
+Be specific, actionable, and encouraging."""
+
+    prompt = f"""다음은 사용자의 최근 7일간 식사 기록입니다.
+
+분석 기간: {period}
+총 식사 수: {len(meals)}회
+
+{meals_summary}
+
+위 데이터를 바탕으로 주간 건강 리포트를 작성해주세요.
+period 필드에는 "{period}"를 사용하세요.
+total_meals 필드에는 {len(meals)}을 사용하세요."""
+
+    return _responses_json(
+        client,
+        model=settings.openai_model,
+        input_data=prompt,
+        instructions=instructions,
+        schema=WEEKLY_REPORT_SCHEMA,
+        name="weekly_report",
+    )
