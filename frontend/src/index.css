@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-primary: #10b981;
+  --color-primary-dark: #059669;
+  --color-accent: #f59e0b;
+  --color-surface: #ffffff;
+  --color-surface-dark: #111827;
+  --color-card: #f9fafb;
+  --color-card-dark: #1f2937;
+  --color-muted: #6b7280;
+  --color-border: #e5e7eb;
+  --color-border-dark: #374151;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family: "Pretendard", "Segoe UI", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.7; }
+  100% { transform: scale(0.95); opacity: 1; }
+}
+
+.animate-scan {
+  animation: pulse-ring 2s ease-in-out infinite;
+}
+
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 1.5s linear infinite;
+}

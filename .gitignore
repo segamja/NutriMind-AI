@@ -1,0 +1,19 @@
+# NutriMind AI
+node_modules/
+dist/
+.env
+*.db
+
+# Python
+__pycache__/
+venv/
+*.pyc
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
