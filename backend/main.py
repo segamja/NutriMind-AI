@@ -55,7 +55,7 @@ async def health():
             await conn.close()
             db_status = "postgresql:connected"
         except Exception as exc:
-            db_status = f"postgresql:error:{type(exc).__name__}"
+            db_status = f"postgresql:error:{type(exc).__name__}:{str(exc)[:160]}"
 
     return {
         "status": "ok",
