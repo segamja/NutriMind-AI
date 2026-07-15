@@ -9,7 +9,7 @@ from app.config import settings
 
 
 def _headers() -> dict[str, str]:
-    key = settings.supabase_service_role_key
+    key = settings.service_role_key
     return {
         "apikey": key,
         "Authorization": f"Bearer {key}",

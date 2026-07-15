@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173,http://localhost:5174"
     supabase_url: str = ""
     supabase_service_role_key: str = ""
+    supabase_key: str = ""
+
+    @property
+    def service_role_key(self) -> str:
+        return self.supabase_service_role_key or self.supabase_key
 
     @property
     def normalized_database_url(self) -> str:
@@ -35,7 +40,7 @@ class Settings(BaseSettings):
 
     @property
     def use_supabase_rest(self) -> bool:
-        return bool(self.resolved_supabase_url and self.supabase_service_role_key)
+        return bool(self.resolved_supabase_url and self.service_role_key)
 
     @property
     def cors_origin_list(self) -> list[str]:
