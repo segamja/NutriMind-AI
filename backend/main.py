@@ -41,6 +41,23 @@ app.include_router(dashboard.router)
 app.include_router(reports.router)
 
 
+@app.get("/api/health/db-config")
+async def db_config_debug():
+    from app.db.pg import build_conninfo, parse_postgres_url
+
+    cfg = parse_postgres_url(settings.normalized_database_url)
+    conn = build_conninfo(settings.normalized_database_url)
+    return {
+        "host": cfg["host"],
+        "port": cfg["port"],
+        "database": cfg["database"],
+        "user_set": bool(cfg["user"]),
+        "password_set": bool(cfg["password"]),
+        "sslmode": conn.get("sslmode"),
+        "hostaddr": conn.get("hostaddr"),
+    }
+
+
 @app.get("/api/health")
 async def health():
     db_status = "sqlite"
@@ -55,7 +72,13 @@ async def health():
             await conn.close()
             db_status = "postgresql:connected"
         except Exception as exc:
-            db_status = f"postgresql:error:{type(exc).__name__}:{str(exc)[:160]}"
+            import traceback
+
+            trace = traceback.format_exc().splitlines()[-3:]
+            db_status = (
+                f"postgresql:error:{type(exc).__name__}:{str(exc)[:120]} "
+                f"| {' > '.join(trace)}"
+            )
 
     return {
         "status": "ok",
