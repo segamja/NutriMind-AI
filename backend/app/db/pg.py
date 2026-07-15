@@ -49,12 +49,29 @@ def build_conninfo(database_url: str) -> dict[str, str | int]:
 
 
 async def connect_postgres(database_url: str):
+    import os
+
     import psycopg
     from psycopg.rows import dict_row
 
-    return await psycopg.AsyncConnection.connect(
-        build_conninfo(database_url),
-        autocommit=True,
-        prepare_threshold=None,
-        row_factory=dict_row,
+    # Vercel/Supabase integrations may set PGHOSTADDR to the pooler hostname,
+    # which libpq treats as an IP address and fails to parse.
+    env_keys = (
+        "PGHOSTADDR",
+        "PGHOST",
+        "PGPORT",
+        "PGUSER",
+        "PGPASSWORD",
+        "PGDATABASE",
+        "PGSSLMODE",
     )
+    saved_env = {key: os.environ.pop(key) for key in env_keys if key in os.environ}
+    try:
+        return await psycopg.AsyncConnection.connect(
+            build_conninfo(database_url),
+            autocommit=True,
+            prepare_threshold=None,
+            row_factory=dict_row,
+        )
+    finally:
+        os.environ.update(saved_env)
