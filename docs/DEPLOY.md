@@ -58,9 +58,9 @@ postgresql://postgres.xxxxx:YOUR_PASSWORD@aws-0-ap-northeast-2.pooler.supabase.c
 | 설정 | 값 |
 |------|-----|
 | Root Directory | `.` (프로젝트 루트) |
-| Build Command | `cd frontend && npm install && npm run build` |
+| Build Command | `cd frontend && npm run build` |
 | Output Directory | `frontend/dist` |
-| Install Command | **비워두기** (Vercel이 Python 의존성 자동 설치) |
+| Install Command | `cd frontend && npm install` (**pip install 사용 금지**) |
 
 > `vercel.json`이 이미 포함되어 있어 대부분 자동 적용됩니다.
 
