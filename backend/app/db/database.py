@@ -125,18 +125,19 @@ async def _pg_connect():
 async def _init_postgres() -> None:
     conn = await _pg_connect()
     try:
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS meals (
-                id TEXT PRIMARY KEY,
-                food_name TEXT NOT NULL,
-                image_url TEXT,
-                nutrition_json JSONB NOT NULL,
-                health_score INTEGER NOT NULL,
-                ingredients_json JSONB NOT NULL,
-                actions_json JSONB NOT NULL,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-        """)
+        async with conn.cursor() as cur:
+            await cur.execute("""
+                CREATE TABLE IF NOT EXISTS meals (
+                    id TEXT PRIMARY KEY,
+                    food_name TEXT NOT NULL,
+                    image_url TEXT,
+                    nutrition_json JSONB NOT NULL,
+                    health_score INTEGER NOT NULL,
+                    ingredients_json JSONB NOT NULL,
+                    actions_json JSONB NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """)
     finally:
         await conn.close()
 
@@ -146,19 +147,22 @@ async def _save_meal_postgres(meal_data: dict) -> str:
     now = datetime.utcnow()
     conn = await _pg_connect()
     try:
-        await conn.execute(
-            """INSERT INTO meals (id, food_name, image_url, nutrition_json,
-               health_score, ingredients_json, actions_json, created_at)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)""",
-            meal_id,
-            meal_data["food_name"],
-            meal_data.get("image_url"),
-            json.dumps(meal_data["nutrition"], ensure_ascii=False),
-            meal_data["health_score"],
-            json.dumps(meal_data["ingredients"], ensure_ascii=False),
-            json.dumps(meal_data["actions"], ensure_ascii=False),
-            now,
-        )
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """INSERT INTO meals (id, food_name, image_url, nutrition_json,
+                   health_score, ingredients_json, actions_json, created_at)
+                   VALUES (%s, %s, %s, %s::jsonb, %s, %s::jsonb, %s::jsonb, %s)""",
+                (
+                    meal_id,
+                    meal_data["food_name"],
+                    meal_data.get("image_url"),
+                    json.dumps(meal_data["nutrition"], ensure_ascii=False),
+                    meal_data["health_score"],
+                    json.dumps(meal_data["ingredients"], ensure_ascii=False),
+                    json.dumps(meal_data["actions"], ensure_ascii=False),
+                    now,
+                ),
+            )
     finally:
         await conn.close()
     return meal_id
@@ -167,9 +171,12 @@ async def _save_meal_postgres(meal_data: dict) -> str:
 async def _get_meals_postgres(limit: int) -> list[dict]:
     conn = await _pg_connect()
     try:
-        rows = await conn.fetch(
-            "SELECT * FROM meals ORDER BY created_at DESC LIMIT $1", limit
-        )
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT * FROM meals ORDER BY created_at DESC LIMIT %s",
+                (limit,),
+            )
+            rows = await cur.fetchall()
     finally:
         await conn.close()
     return [_row_to_meal(dict(row)) for row in rows]
@@ -178,7 +185,9 @@ async def _get_meals_postgres(limit: int) -> list[dict]:
 async def _get_meal_by_id_postgres(meal_id: str) -> dict | None:
     conn = await _pg_connect()
     try:
-        row = await conn.fetchrow("SELECT * FROM meals WHERE id = $1", meal_id)
+        async with conn.cursor() as cur:
+            await cur.execute("SELECT * FROM meals WHERE id = %s", (meal_id,))
+            row = await cur.fetchone()
     finally:
         await conn.close()
     return _row_to_meal(dict(row)) if row else None
@@ -188,10 +197,12 @@ async def _get_today_meals_postgres() -> list[dict]:
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     conn = await _pg_connect()
     try:
-        rows = await conn.fetch(
-            "SELECT * FROM meals WHERE created_at >= $1 ORDER BY created_at DESC",
-            today_start,
-        )
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT * FROM meals WHERE created_at >= %s ORDER BY created_at DESC",
+                (today_start,),
+            )
+            rows = await cur.fetchall()
     finally:
         await conn.close()
     return [_row_to_meal(dict(row)) for row in rows]
@@ -201,10 +212,12 @@ async def _get_meals_since_postgres(days: int) -> list[dict]:
     since = datetime.utcnow() - timedelta(days=days)
     conn = await _pg_connect()
     try:
-        rows = await conn.fetch(
-            "SELECT * FROM meals WHERE created_at >= $1 ORDER BY created_at ASC",
-            since,
-        )
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT * FROM meals WHERE created_at >= %s ORDER BY created_at ASC",
+                (since,),
+            )
+            rows = await cur.fetchall()
     finally:
         await conn.close()
     return [_row_to_meal(dict(row)) for row in rows]

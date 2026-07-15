@@ -43,10 +43,24 @@ app.include_router(reports.router)
 
 @app.get("/api/health")
 async def health():
+    db_status = "sqlite"
+    if settings.is_production_db:
+        db_status = "postgresql"
+        try:
+            from app.db.pg import connect_postgres
+
+            conn = await connect_postgres(settings.normalized_database_url)
+            async with conn.cursor() as cur:
+                await cur.execute("SELECT 1")
+            await conn.close()
+            db_status = "postgresql:connected"
+        except Exception as exc:
+            db_status = f"postgresql:error:{type(exc).__name__}"
+
     return {
         "status": "ok",
         "service": "NutriMind AI",
         "openai_configured": bool(settings.openai_api_key),
-        "database": "postgresql" if settings.is_production_db else "sqlite",
+        "database": db_status,
         "vercel": settings.is_vercel,
     }

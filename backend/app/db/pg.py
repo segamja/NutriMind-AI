@@ -1,15 +1,28 @@
-import ssl
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse, unquote
 
 
 def normalize_database_url(url: str) -> str:
-    cleaned = url.strip()
+    cleaned = url.strip().strip('"').strip("'")
     for prefix in ("postgresql+asyncpg://", "postgres+asyncpg://"):
         if cleaned.startswith(prefix):
             cleaned = "postgresql://" + cleaned[len(prefix) :]
     if cleaned.startswith("postgres://"):
         cleaned = "postgresql://" + cleaned[len("postgres://") :]
     return cleaned
+
+
+def prepare_psycopg_url(url: str) -> str:
+    normalized = normalize_database_url(url)
+    parsed = urlparse(normalized)
+    query = parse_qs(parsed.query)
+
+    if "sslmode" not in query and (
+        "supabase" in (parsed.hostname or "") or parsed.port == 6543
+    ):
+        query["sslmode"] = ["require"]
+
+    rebuilt = parsed._replace(query=urlencode(query, doseq=True))
+    return urlunparse(rebuilt)
 
 
 def parse_postgres_url(url: str) -> dict:
@@ -24,34 +37,16 @@ def parse_postgres_url(url: str) -> dict:
         "host": parsed.hostname,
         "port": parsed.port or 5432,
         "database": parsed.path.lstrip("/") or "postgres",
-        "query": parse_qs(parsed.query),
     }
-
-
-def _should_use_ssl(host: str, port: int, query: dict) -> bool:
-    sslmode = query.get("sslmode", ["prefer"])[0].lower()
-    if sslmode in {"require", "verify-ca", "verify-full"}:
-        return True
-    return "supabase" in host or port == 6543
 
 
 async def connect_postgres(database_url: str):
-    import asyncpg
+    import psycopg
+    from psycopg.rows import dict_row
 
-    cfg = parse_postgres_url(database_url)
-    connect_kwargs: dict = {
-        "user": cfg["user"],
-        "password": cfg["password"],
-        "host": cfg["host"],
-        "port": cfg["port"],
-        "database": cfg["database"],
-        "statement_cache_size": 0,
-    }
-
-    if _should_use_ssl(cfg["host"], cfg["port"], cfg["query"]):
-        ssl_context = ssl.create_default_context()
-        ssl_context.check_hostname = False
-        ssl_context.verify_mode = ssl.CERT_NONE
-        connect_kwargs["ssl"] = ssl_context
-
-    return await asyncpg.connect(**connect_kwargs)
+    return await psycopg.AsyncConnection.connect(
+        prepare_psycopg_url(database_url),
+        autocommit=True,
+        prepare_threshold=None,
+        row_factory=dict_row,
+    )
