@@ -117,13 +117,9 @@ def _row_to_meal(row: Any) -> dict:
 # --- PostgreSQL (Supabase) ---
 
 async def _pg_connect():
-    import asyncpg
+    from app.db.pg import connect_postgres
 
-    url = settings.normalized_database_url
-    kwargs: dict = {"statement_cache_size": 0}
-    if "supabase" in url or "pooler.supabase.com" in url:
-        kwargs["ssl"] = "require"
-    return await asyncpg.connect(url, **kwargs)
+    return await connect_postgres(settings.normalized_database_url)
 
 
 async def _init_postgres() -> None:

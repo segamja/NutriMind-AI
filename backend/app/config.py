@@ -16,10 +16,9 @@ class Settings(BaseSettings):
 
     @property
     def normalized_database_url(self) -> str:
-        url = self.database_url.strip()
-        if url.startswith("postgres://"):
-            url = "postgresql://" + url[len("postgres://") :]
-        return url
+        from app.db.pg import normalize_database_url
+
+        return normalize_database_url(self.database_url)
 
     @property
     def cors_origin_list(self) -> list[str]:
