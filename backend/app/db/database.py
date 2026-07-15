@@ -5,7 +5,7 @@ from typing import Any
 
 from app.config import settings
 
-USE_POSTGRES = settings.database_url.startswith("postgresql")
+USE_POSTGRES = settings.is_production_db
 
 
 async def init_db() -> None:
@@ -118,7 +118,12 @@ def _row_to_meal(row: Any) -> dict:
 
 async def _pg_connect():
     import asyncpg
-    return await asyncpg.connect(settings.database_url, statement_cache_size=0)
+
+    url = settings.normalized_database_url
+    kwargs: dict = {"statement_cache_size": 0}
+    if "supabase" in url or "pooler.supabase.com" in url:
+        kwargs["ssl"] = "require"
+    return await asyncpg.connect(url, **kwargs)
 
 
 async def _init_postgres() -> None:
@@ -209,9 +214,9 @@ async def _get_meals_since_postgres(days: int) -> list[dict]:
     return [_row_to_meal(dict(row)) for row in rows]
 
 
-# --- SQLite (local dev) ---
+# --- SQLite (local dev / Vercel fallback) ---
 
-DB_PATH = "nutrimind.db"
+DB_PATH = "/tmp/nutrimind.db" if settings.is_vercel else "nutrimind.db"
 
 
 async def _init_sqlite() -> None:

@@ -10,8 +10,11 @@ import {
   Leaf,
   FileText,
 } from 'lucide-react'
+import { UpdatePrompt } from './UpdatePrompt'
+import { useVersionCheck } from '../hooks/useVersionCheck'
 import { useAppStore } from '../store/useAppStore'
 import { cn } from '../lib/utils'
+import { APP_VERSION, formatVersionLabel } from '../lib/version'
 
 const navItems = [
   { to: '/', icon: Home, label: '홈' },
@@ -24,6 +27,7 @@ const navItems = [
 
 export function Layout() {
   const { darkMode, toggleDarkMode } = useAppStore()
+  const { updateAvailable, dismissUpdate, confirmUpdate } = useVersionCheck()
 
   return (
     <div className={cn('min-h-dvh bg-gray-50 dark:bg-gray-950', darkMode && 'dark')}>
@@ -38,7 +42,7 @@ export function Layout() {
                 NutriMind AI
               </h1>
               <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                Snap. Analyze. Improve.
+                Snap. Analyze. Improve. · {formatVersionLabel(APP_VERSION)}
               </p>
             </div>
           </div>
@@ -55,6 +59,18 @@ export function Layout() {
       <main className="mx-auto max-w-lg px-4 pb-24 pt-4">
         <Outlet />
       </main>
+
+      <p className="pointer-events-none fixed bottom-[4.5rem] left-0 right-0 z-30 text-center text-[10px] text-gray-400 dark:text-gray-600">
+        NutriMind AI {formatVersionLabel(APP_VERSION)}
+      </p>
+
+      {updateAvailable && (
+        <UpdatePrompt
+          remote={updateAvailable}
+          onUpdate={confirmUpdate}
+          onDismiss={dismissUpdate}
+        />
+      )}
 
       <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/90 backdrop-blur-md dark:border-gray-800 dark:bg-gray-900/90">
         <div className="mx-auto flex max-w-lg items-center justify-around px-2 py-2">

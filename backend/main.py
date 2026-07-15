@@ -10,7 +10,13 @@ from app.routers import dashboard, meals, reports, scan
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db()
+    try:
+        await init_db()
+    except Exception:
+        # Keep API alive (scan/coach) even if DB init fails on cold start.
+        import logging
+
+        logging.exception("Database initialization failed")
     yield
 
 
@@ -42,4 +48,5 @@ async def health():
         "service": "NutriMind AI",
         "openai_configured": bool(settings.openai_api_key),
         "database": "postgresql" if settings.is_production_db else "sqlite",
+        "vercel": settings.is_vercel,
     }

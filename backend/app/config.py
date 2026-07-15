@@ -1,3 +1,5 @@
+import os
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,6 +15,13 @@ class Settings(BaseSettings):
     supabase_service_role_key: str = ""
 
     @property
+    def normalized_database_url(self) -> str:
+        url = self.database_url.strip()
+        if url.startswith("postgres://"):
+            url = "postgresql://" + url[len("postgres://") :]
+        return url
+
+    @property
     def cors_origin_list(self) -> list[str]:
         origins = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
         if not origins:
@@ -21,7 +30,11 @@ class Settings(BaseSettings):
 
     @property
     def is_production_db(self) -> bool:
-        return self.database_url.startswith("postgresql")
+        return self.normalized_database_url.startswith("postgresql")
+
+    @property
+    def is_vercel(self) -> bool:
+        return os.getenv("VERCEL") == "1"
 
 
 settings = Settings()

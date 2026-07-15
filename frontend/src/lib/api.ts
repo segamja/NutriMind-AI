@@ -39,9 +39,25 @@ async function handleResponse<T>(res: Response): Promise<T> {
 
 export async function scanFood(image: File): Promise<ScanResponse> {
   const form = new FormData()
-  form.append('image', image, image.name || 'food.jpg')
-  const res = await fetch(`${API_BASE}/scan`, { method: 'POST', body: form })
-  return handleResponse<ScanResponse>(res)
+  const filename = image.name || 'food.jpg'
+  form.append('image', image, filename.endsWith('.') ? 'food.jpg' : filename)
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 120_000)
+  try {
+    const res = await fetch(`${API_BASE}/scan`, {
+      method: 'POST',
+      body: form,
+      signal: controller.signal,
+    })
+    return handleResponse<ScanResponse>(res)
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      throw new Error('분석 시간이 초과되었습니다. 잠시 후 다시 시도하세요.')
+    }
+    throw e
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 export async function saveMeal(data: {

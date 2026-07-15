@@ -1,11 +1,12 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Camera, Upload, ImageIcon } from 'lucide-react'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { LoadingOverlay, ErrorBanner } from '../components/ui/Loading'
-import { scanFood } from '../lib/api'
+import { checkHealth, scanFood } from '../lib/api'
 import { useAppStore } from '../store/useAppStore'
+import { isLikelyImageFile } from '../lib/utils'
 
 export function CameraPage() {
   const navigate = useNavigate()
@@ -17,8 +18,20 @@ export function CameraPage() {
   const [error, setError] = useState<string | null>(null)
   const { setLastScan, setPreviewImage } = useAppStore()
 
+  useEffect(() => {
+    checkHealth()
+      .then((health) => {
+        if (!health.openai_configured) {
+          setError('OpenAI API 키가 설정되지 않았습니다. backend/.env를 확인하세요.')
+        }
+      })
+      .catch(() => {
+        setError('백엔드 서버에 연결할 수 없습니다. 포트 8800에서 서버가 실행 중인지 확인하세요.')
+      })
+  }, [])
+
   const handleFile = (file: File) => {
-    if (!file.type.startsWith('image/')) {
+    if (!isLikelyImageFile(file)) {
       setError('이미지 파일만 업로드할 수 있습니다.')
       return
     }
@@ -37,7 +50,12 @@ export function CameraPage() {
       setPreviewImage(preview)
       navigate('/result')
     } catch (e) {
-      setError(e instanceof Error ? e.message : '분석에 실패했습니다.')
+      const message = e instanceof Error ? e.message : '분석에 실패했습니다.'
+      if (message.includes('Failed to fetch') || message.includes('NetworkError')) {
+        setError('서버 연결이 끊겼습니다. 백엔드(포트 8800)가 실행 중인지 확인 후 다시 시도하세요.')
+      } else {
+        setError(message)
+      }
     } finally {
       setLoading(false)
     }
