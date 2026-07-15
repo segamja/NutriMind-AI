@@ -5,47 +5,80 @@ from typing import Any
 
 from app.config import settings
 
-USE_POSTGRES = settings.is_production_db
+USE_POSTGRES = settings.is_production_db and not settings.use_supabase_rest
+USE_SUPABASE_REST = settings.use_supabase_rest
 
 
 async def init_db() -> None:
-    if USE_POSTGRES:
+    if USE_SUPABASE_REST:
+        from app.db import supabase_rest as rest
+
+        await rest.init_db()
+    elif USE_POSTGRES:
         await _init_postgres()
     else:
         await _init_sqlite()
 
 
 async def save_meal(meal_data: dict) -> str:
+    if USE_SUPABASE_REST:
+        from app.db import supabase_rest as rest
+
+        return await rest.save_meal(meal_data)
     if USE_POSTGRES:
         return await _save_meal_postgres(meal_data)
     return await _save_meal_sqlite(meal_data)
 
 
 async def get_meals(limit: int = 50) -> list[dict]:
+    if USE_SUPABASE_REST:
+        from app.db import supabase_rest as rest
+
+        return await rest.get_meals(limit)
     if USE_POSTGRES:
         return await _get_meals_postgres(limit)
     return await _get_meals_sqlite(limit)
 
 
 async def get_meal_by_id(meal_id: str) -> dict | None:
+    if USE_SUPABASE_REST:
+        from app.db import supabase_rest as rest
+
+        return await rest.get_meal_by_id(meal_id)
     if USE_POSTGRES:
         return await _get_meal_by_id_postgres(meal_id)
     return await _get_meal_by_id_sqlite(meal_id)
 
 
 async def get_today_meals() -> list[dict]:
+    if USE_SUPABASE_REST:
+        from app.db import supabase_rest as rest
+
+        return await rest.get_today_meals()
     if USE_POSTGRES:
         return await _get_today_meals_postgres()
     return await _get_today_meals_sqlite()
 
 
 async def get_meals_since(days: int = 7) -> list[dict]:
+    if USE_SUPABASE_REST:
+        from app.db import supabase_rest as rest
+
+        return await rest.get_meals_since(days)
     if USE_POSTGRES:
         return await _get_meals_since_postgres(days)
     return await _get_meals_since_sqlite(days)
 
 
 async def get_dashboard_stats() -> dict:
+    if USE_SUPABASE_REST:
+        from app.db import supabase_rest as rest
+
+        return await rest.get_dashboard_stats()
+    return await _get_dashboard_stats_local()
+
+
+async def _get_dashboard_stats_local() -> dict:
     meals = await get_meals(limit=200)
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     week_start = today_start - timedelta(days=6)

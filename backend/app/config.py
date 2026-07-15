@@ -21,6 +21,23 @@ class Settings(BaseSettings):
         return normalize_database_url(self.database_url)
 
     @property
+    def resolved_supabase_url(self) -> str:
+        if self.supabase_url:
+            return self.supabase_url.rstrip("/")
+
+        url = self.normalized_database_url
+        if "@" in url and "pooler.supabase.com" in url:
+            user = url.split("://", 1)[1].split("@", 1)[0].split(":", 1)[0]
+            if user.startswith("postgres.") and len(user) > 9:
+                project_ref = user.split(".", 1)[1]
+                return f"https://{project_ref}.supabase.co"
+        return ""
+
+    @property
+    def use_supabase_rest(self) -> bool:
+        return bool(self.resolved_supabase_url and self.supabase_service_role_key)
+
+    @property
     def cors_origin_list(self) -> list[str]:
         origins = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
         if not origins:

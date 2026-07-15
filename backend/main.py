@@ -41,27 +41,18 @@ app.include_router(dashboard.router)
 app.include_router(reports.router)
 
 
-@app.get("/api/health/db-config")
-async def db_config_debug():
-    from app.db.pg import build_conninfo, parse_postgres_url
-
-    cfg = parse_postgres_url(settings.normalized_database_url)
-    conn = build_conninfo(settings.normalized_database_url)
-    return {
-        "host": cfg["host"],
-        "port": cfg["port"],
-        "database": cfg["database"],
-        "user_set": bool(cfg["user"]),
-        "password_set": bool(cfg["password"]),
-        "sslmode": conn.get("sslmode"),
-        "hostaddr": conn.get("hostaddr"),
-    }
-
-
 @app.get("/api/health")
 async def health():
-    db_status = "sqlite"
-    if settings.is_production_db:
+    if settings.use_supabase_rest:
+        db_status = "supabase-rest"
+        try:
+            from app.db import supabase_rest as rest
+
+            await rest.get_meals(limit=1)
+            db_status = "supabase-rest:connected"
+        except Exception as exc:
+            db_status = f"supabase-rest:error:{type(exc).__name__}:{str(exc)[:120]}"
+    elif settings.is_production_db:
         db_status = "postgresql"
         try:
             from app.db.pg import connect_postgres
@@ -72,18 +63,15 @@ async def health():
             await conn.close()
             db_status = "postgresql:connected"
         except Exception as exc:
-            import traceback
-
-            trace = traceback.format_exc().splitlines()[-3:]
-            db_status = (
-                f"postgresql:error:{type(exc).__name__}:{str(exc)[:120]} "
-                f"| {' > '.join(trace)}"
-            )
+            db_status = f"postgresql:error:{type(exc).__name__}:{str(exc)[:120]}"
+    else:
+        db_status = "sqlite"
 
     return {
         "status": "ok",
         "service": "NutriMind AI",
         "openai_configured": bool(settings.openai_api_key),
         "database": db_status,
+        "supabase_rest": settings.use_supabase_rest,
         "vercel": settings.is_vercel,
     }
