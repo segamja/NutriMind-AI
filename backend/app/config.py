@@ -14,10 +14,15 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_service_role_key: str = ""
     supabase_key: str = ""
+    supabase_secret_key: str = ""
 
     @property
     def service_role_key(self) -> str:
-        return self.supabase_service_role_key or self.supabase_key
+        return (
+            self.supabase_service_role_key
+            or self.supabase_secret_key
+            or self.supabase_key
+        )
 
     @property
     def normalized_database_url(self) -> str:

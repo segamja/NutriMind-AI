@@ -73,5 +73,7 @@ async def health():
         "openai_configured": bool(settings.openai_api_key),
         "database": db_status,
         "supabase_rest": settings.use_supabase_rest,
+        "supabase_url_ready": bool(settings.resolved_supabase_url),
+        "supabase_key_ready": bool(settings.service_role_key),
         "vercel": settings.is_vercel,
     }
