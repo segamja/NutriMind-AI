@@ -14,7 +14,7 @@ import { UpdatePrompt } from './UpdatePrompt'
 import { useVersionCheck } from '../hooks/useVersionCheck'
 import { useAppStore } from '../store/useAppStore'
 import { cn } from '../lib/utils'
-import { APP_VERSION, formatVersionLabel } from '../lib/version'
+import { formatDisplayVersion } from '../lib/version'
 
 const navItems = [
   { to: '/', icon: Home, label: '홈' },
@@ -42,7 +42,7 @@ export function Layout() {
                 NutriMind AI
               </h1>
               <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                Snap. Analyze. Improve. · {formatVersionLabel(APP_VERSION)}
+                Snap. Analyze. Improve. · {formatDisplayVersion()}
               </p>
             </div>
           </div>
@@ -61,7 +61,7 @@ export function Layout() {
       </main>
 
       <p className="pointer-events-none fixed bottom-[4.5rem] left-0 right-0 z-30 text-center text-[10px] text-gray-400 dark:text-gray-600">
-        NutriMind AI {formatVersionLabel(APP_VERSION)}
+        NutriMind AI {formatDisplayVersion()}
       </p>
 
       {updateAvailable && (

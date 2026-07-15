@@ -1,6 +1,6 @@
 import { RefreshCw, Sparkles } from 'lucide-react'
 import { Button } from './ui/Button'
-import { formatVersionLabel, APP_VERSION } from '../lib/version'
+import { APP_BUILD, APP_VERSION, formatUpdateLabel } from '../lib/version'
 import type { AppVersionInfo } from '../lib/version'
 
 interface UpdatePromptProps {
@@ -27,7 +27,7 @@ export function UpdatePrompt({ remote, onUpdate, onDismiss }: UpdatePromptProps)
               새 버전이 있습니다
             </h2>
             <p id="update-desc" className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-              {formatVersionLabel(APP_VERSION)} → {formatVersionLabel(remote.version)}
+              {formatUpdateLabel(APP_VERSION, APP_BUILD, remote)}
               <br />
               업데이트하면 최신 기능과 수정 사항이 적용됩니다.
             </p>

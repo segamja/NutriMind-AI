@@ -35,6 +35,7 @@ function versionPlugin(): Plugin {
       persistVersionJson(versionInfo)
     },
     buildStart() {
+      versionInfo = createVersionInfo()
       persistVersionJson(versionInfo)
     },
   }
