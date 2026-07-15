@@ -1,4 +1,4 @@
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse, unquote
+from urllib.parse import parse_qs, unquote, urlparse
 
 
 def normalize_database_url(url: str) -> str:
@@ -9,20 +9,6 @@ def normalize_database_url(url: str) -> str:
     if cleaned.startswith("postgres://"):
         cleaned = "postgresql://" + cleaned[len("postgres://") :]
     return cleaned
-
-
-def prepare_psycopg_url(url: str) -> str:
-    normalized = normalize_database_url(url)
-    parsed = urlparse(normalized)
-    query = parse_qs(parsed.query)
-
-    if "sslmode" not in query and (
-        "supabase" in (parsed.hostname or "") or parsed.port == 6543
-    ):
-        query["sslmode"] = ["require"]
-
-    rebuilt = parsed._replace(query=urlencode(query, doseq=True))
-    return urlunparse(rebuilt)
 
 
 def parse_postgres_url(url: str) -> dict:
@@ -37,6 +23,28 @@ def parse_postgres_url(url: str) -> dict:
         "host": parsed.hostname,
         "port": parsed.port or 5432,
         "database": parsed.path.lstrip("/") or "postgres",
+        "query": parse_qs(parsed.query),
+    }
+
+
+def build_conninfo(database_url: str) -> dict[str, str | int]:
+    """Build libpq params from DATABASE_URL, ignoring stray PG* env vars."""
+    cfg = parse_postgres_url(database_url)
+    sslmode = cfg["query"].get("sslmode", ["prefer"])[0]
+    if sslmode == "prefer" and (
+        "supabase" in cfg["host"] or cfg["port"] == 6543
+    ):
+        sslmode = "require"
+
+    return {
+        "host": cfg["host"],
+        "port": cfg["port"],
+        "user": cfg["user"],
+        "password": cfg["password"],
+        "dbname": cfg["database"],
+        "sslmode": sslmode,
+        # Prevent PGHOSTADDR env (often set to hostname on Vercel) from breaking connect.
+        "hostaddr": "",
     }
 
 
@@ -45,7 +53,7 @@ async def connect_postgres(database_url: str):
     from psycopg.rows import dict_row
 
     return await psycopg.AsyncConnection.connect(
-        prepare_psycopg_url(database_url),
+        build_conninfo(database_url),
         autocommit=True,
         prepare_threshold=None,
         row_factory=dict_row,
