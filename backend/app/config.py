@@ -1,5 +1,6 @@
 import os
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,8 +12,22 @@ class Settings(BaseSettings):
     openai_vision_model: str = "gpt-4o-mini"
     database_url: str = "sqlite+aiosqlite:///./nutrimind.db"
     cors_origins: str = "http://localhost:5173,http://localhost:5174"
-    supabase_url: str = ""
-    supabase_service_role_key: str = ""
+    supabase_url: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "SUPABASE_URL",
+            "NEXT_PUBLIC_SUPABASE_URL",
+            "VITE_SUPABASE_URL",
+        ),
+    )
+    supabase_service_role_key: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "SUPABASE_SERVICE_ROLE_KEY",
+            "SUPABASE_SECRET_KEY",
+            "SUPABASE_SERVICE_KEY",
+        ),
+    )
     supabase_key: str = ""
     supabase_secret_key: str = ""
 

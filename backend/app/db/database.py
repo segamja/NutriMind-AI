@@ -9,6 +9,27 @@ USE_POSTGRES = settings.is_production_db and not settings.use_supabase_rest
 USE_SUPABASE_REST = settings.use_supabase_rest
 
 
+def _db_setup_error() -> str | None:
+    if not settings.is_vercel:
+        return None
+    if settings.use_supabase_rest:
+        return None
+    if not settings.service_role_key:
+        return (
+            "Vercel에 SUPABASE_SERVICE_ROLE_KEY(Secret keys → sb_secret_...)를 "
+            "Production 환경에 추가한 뒤 Redeploy 하세요."
+        )
+    if not settings.resolved_supabase_url:
+        return "Vercel에 SUPABASE_URL(https://thaeqdnrhufccjdcvsll.supabase.co)을 추가하세요."
+    return None
+
+
+def _ensure_db_available() -> None:
+    message = _db_setup_error()
+    if message:
+        raise RuntimeError(message)
+
+
 async def init_db() -> None:
     if USE_SUPABASE_REST:
         from app.db import supabase_rest as rest
@@ -21,6 +42,7 @@ async def init_db() -> None:
 
 
 async def save_meal(meal_data: dict) -> str:
+    _ensure_db_available()
     if USE_SUPABASE_REST:
         from app.db import supabase_rest as rest
 
@@ -31,6 +53,7 @@ async def save_meal(meal_data: dict) -> str:
 
 
 async def get_meals(limit: int = 50) -> list[dict]:
+    _ensure_db_available()
     if USE_SUPABASE_REST:
         from app.db import supabase_rest as rest
 

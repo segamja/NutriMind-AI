@@ -75,5 +75,13 @@ async def health():
         "supabase_rest": settings.use_supabase_rest,
         "supabase_url_ready": bool(settings.resolved_supabase_url),
         "supabase_key_ready": bool(settings.service_role_key),
+        "setup_hint": (
+            "Vercel → Environment Variables → SUPABASE_SERVICE_ROLE_KEY 에 "
+            "Supabase Secret keys(sb_secret_...)를 Production에 추가 후 Redeploy"
+            if settings.is_vercel
+            and settings.resolved_supabase_url
+            and not settings.service_role_key
+            else None
+        ),
         "vercel": settings.is_vercel,
     }
