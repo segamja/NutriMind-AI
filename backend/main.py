@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.db.database import init_db
@@ -41,6 +42,11 @@ app.include_router(dashboard.router)
 app.include_router(reports.router)
 
 
+@app.exception_handler(RuntimeError)
+async def runtime_error_handler(_, exc: RuntimeError):
+    return JSONResponse(status_code=503, content={"detail": str(exc)})
+
+
 @app.get("/api/health")
 async def health():
     if settings.use_supabase_rest:
@@ -52,7 +58,9 @@ async def health():
             db_status = "supabase-rest:connected"
         except Exception as exc:
             db_status = f"supabase-rest:error:{type(exc).__name__}:{str(exc)[:120]}"
-    elif settings.is_production_db:
+    elif settings.is_vercel and settings.is_production_db and not settings.use_supabase_rest:
+        db_status = "setup_required:supabase_service_role_key"
+    elif settings.is_production_db and not settings.is_vercel:
         db_status = "postgresql"
         try:
             from app.db.pg import connect_postgres

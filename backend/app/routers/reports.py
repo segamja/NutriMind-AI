@@ -10,6 +10,8 @@ router = APIRouter(prefix="/api/reports", tags=["reports"])
 async def get_weekly_report():
     try:
         report = await report_service.create_weekly_report()
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
